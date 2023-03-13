@@ -109,6 +109,8 @@ void Json::split(const char* payload) {
     }
 
     int idx         = 0;
+    int start       = 0;
+    int end         = 0;
 
     clear_map();
 
@@ -118,6 +120,7 @@ void Json::split(const char* payload) {
             if(chr == '{') jsm = JSON_START;
         }
         else if(jsm == JSON_START) {
+            start++;
             if(chr == '\"' || chr == '\'') {
                 memset(key, 0, JSON_MAX_SIZE_KEY);
                 idx = 0;
@@ -129,7 +132,7 @@ void Json::split(const char* payload) {
             if(chr == '\"' || chr == '\'') {
                 memset(t_key, 0, JSON_MAX_SIZE_KEY);
                 strcpy(t_key, key);
-                create_map(t_key);
+                create_map(t_key, KEY);
                 // chuyển trạng thái 
                 jsm = JSON_WAIT_KEY;
             }
@@ -154,12 +157,15 @@ void Json::split(const char* payload) {
                 // chuyển trạng thái
                 jsm = JSON_INT_DATA;
             }
+            else if(chr == '{') {
+                jsm = JSON_START;
+            }
         }
         else if(jsm == JSON_STRING_DATA) {
             if(chr == '\"' || chr == '\'') {
                 memset(t_data, 0, JSON_MAX_SIZE_DATA);
                 strcpy(t_data, str);
-                create_map(t_data);
+                create_map(t_data, DATA);
                 // chuyển trạng thái
                 jsm = JSON_WAIT_DATA;
             }
@@ -174,7 +180,7 @@ void Json::split(const char* payload) {
             else {
                 memset(t_data, 0, JSON_MAX_SIZE_DATA);
                 strcpy(t_data, num);
-                create_map(t_data);
+                create_map(t_data, DATA);
                 // chuyen trang thai
                 if(chr == ',') jsm = JSON_START;
                 else if(chr == '}') jsm = JSON_END;
@@ -185,7 +191,17 @@ void Json::split(const char* payload) {
             if(chr == ',') jsm = JSON_START;
             else if(chr == '}') jsm = JSON_END;
         }
-        else if(jsm == JSON_END) { /*do nothing */}
+        else if(jsm == JSON_END) { 
+            end++;
+            // neu so luong bat dau bang ket thuc thi ket thuc
+            // nguoc lai con
+            if(start == end) {
+                /*do nothing*/
+            }
+            else {
+                jsm = JSON_START;
+            }
+        }
     }
 
     free(str);
@@ -195,8 +211,9 @@ void Json::split(const char* payload) {
     free(t_key);
 }
 
-void Json::create_map(char* data) {
+void Json::create_map(char* data, uint8_t type) {
     JsonMap t_map;
+    t_map.type      = type;
     t_map.pos       = pointer;
     t_map.length    = strlen(data);
 
@@ -288,18 +305,18 @@ void Json::validation(void) {
         if(key) {
             memset(key, 0, idx.length + 1);
             memcpy(key, &storage[idx.pos], idx.length);
-            // Serial.print(key);
+            printf("%s", key);
 
             idx = map[i+1];
             char* data = (char*)malloc(idx.length + 1);
             if(data) {
                 memset(data, 0, idx.length + 1);
                 memcpy(data, &storage[idx.pos], idx.length);
-                // Serial.print("\t-\t");
-                // if(idx.length > 100)
-                //     Serial.println(strlen(data));
-                // else
-                //     Serial.println(data);
+                printf("\t-\t");
+                if(idx.length > 100)
+                    printf("%ld\n", strlen(data));
+                else
+                    printf("%s\n", data);
                 free(data);
             }
             free(key);
@@ -312,5 +329,7 @@ void Json::check_map(void) {
     if(error)       return;
     for(int i = 0; i < cnt; i++) {
         JsonMap idx = map[i];
+        printf("%d - %d - %d\n", idx.type, idx.pos, idx.length);
     } 
+
 }

@@ -16,6 +16,9 @@
 #define JSON_TYPE_KEY       1
 #define JSON_TYPE_DATA      0
 
+#define KEY                 0
+#define DATA                1
+
 enum JsonStateMachine {
     JSON_INITIAL,
     JSON_START,
@@ -25,14 +28,16 @@ enum JsonStateMachine {
     JSON_DATA,
     JSON_STRING_DATA,
     JSON_INT_DATA,
+    JSON_CHILD_START,
+    JSON_CHILD_END,
     JSON_END,
 };
 
 struct JsonMap {
-    uint8_t pos;
-    uint8_t length;
-
-    // String __str__() {  return "pos: " + String(pos) + " length: " + String(length) + "\n"; }
+    uint8_t     type : 1;
+    uint8_t     leve : 2;
+    uint16_t    pos  : 13;
+    uint16_t    length;
 };
 
 class Json {
@@ -45,7 +50,8 @@ public:
 
     void add(char* parent, const char* field, const char* value);
     void add(char* parent, const char* field, int value);
-    // void add(char* parent, const char* field, String values[], int size);
+
+    void add(char* parent, const char* field, const char* value[], int size);
     void add(char* parent, const char* field, int values[], int size);
 
     void add(char* parent, const char* field, char* multi);
@@ -74,7 +80,7 @@ private:
      * @param data          dữ liệu cần được tạo ánh xạ
      * @param key           nếu đó là key thì bàng 1 ngược lại 0.
      */
-    void create_map(char* data);
+    void create_map(char* data, uint8_t type);
     /**
      * @brief xóa dữ liệu trong bản đồ ánh xạ và reset các biến
      * 
