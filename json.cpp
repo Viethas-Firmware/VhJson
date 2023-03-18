@@ -1,134 +1,188 @@
 #include "json.h"
 
-char* Json::jsonParent  = (char*)malloc(MAX_SIZE * sizeof(char));
-char* Json::jsonParam   = (char*)malloc(MAX_SIZE * sizeof(char));
-
 Json::Json()    {
-    // allocate memory for storage and map
-    storage         = (uint8_t*)malloc(sizeof(uint8_t) * 1024);
-    map             = (JsonMap*)malloc(sizeof(JsonMap) * 10);
-    error           = true;
+    // allocate memory for __storage and __map
+    __buffer_size   = JSON_MAX_SIZE;
+    __json_str      = (char*)malloc(__buffer_size * sizeof(char));
+    memset(__json_str, 0, JSON_MAX_SIZE);
+
+    __storage         = (uint8_t*)malloc(sizeof(uint8_t) * 1024);
+    __map             = (JsonMap*)malloc(sizeof(JsonMap) * 10);
+    __error           = true;
 }
 Json::~Json()   {   
     delete_map();
 }
 
-void Json::add(char* parent, const char* field, int value) {
-    char* temp = parent;
-
-    if(parent[0] == '\0') {
-        sprintf(parent, "\"%s\":%d", field, value);
+void Json::setBufferSize(uint16_t size) {
+    if(size != 0 && size != this->__buffer_size) {
+        // re-allocate memory for json string
+        this->__json_str = (char*)realloc(this->__json_str, size);
+        // clear all memory
+        memset(this->__json_str, 0, size);
+        // update size in buffer size.
+        this->__buffer_size   = size;
     }
-    else {
-        sprintf(parent, "%s,\"%s\":%d", temp, field, value);
-    }
-    // giải phóng vùng nhớ con trỏ
-    temp = NULL;
-    free(temp);
 }
 
-void Json::add(char* parent, const char* field, const char* value) {
-    char* temp = parent;
-
-    if(parent[0] == '\0') {
-        sprintf(parent, "\"%s\":\"%s\"", field, value);
-    }
-    else {
-        sprintf(parent, "%s,\"%s\":\"%s\"", temp, field, value);
-    }
-
-    temp = NULL;
-    free(temp);
+const char* Json::c_str(void) {
+    return (const char*)this->__json_str;
 }
 
-void Json::add(char* parent, const char* field, const char* value[], int size) {
-    char* temp = parent;
-    char* str   = (char*)malloc(2048);
+Json& Json::set(const char* field, const char* value) {
+
+    if(this->__json_str[0] == '\0') {
+        sprintf(this->__json_str, "{\"%s\": \"%s\"}", field, value);
+    }
+    else {
+        // allocate memory for temp variable
+        char* t     = (char*)malloc(strlen(this->__json_str) + 1);
+        memset(t, 0, strlen(this->__json_str) + 1);
+        memcpy(t, &this->__json_str[1], strlen(this->__json_str) - 2);
+
+        sprintf(this->__json_str, "{%s, \"%s\": \"%s\"}", t, field, value);
+        // release memory
+        free(t);
+    }
+    // split json data 
+    split(__json_str);
+
+    return *this;
+}
+
+Json& Json::set(const char* field, int value) {
+
+    if(this->__json_str[0] == '\0') {
+        sprintf(this->__json_str, "{\"%s\": %d}", field, value);
+    }
+    else {
+        // allocate memory for temp variable
+        char* t     = (char*)malloc(strlen(this->__json_str) + 1);
+        memcpy(t, &this->__json_str[1], strlen(this->__json_str) - 2);
+
+        sprintf(this->__json_str, "{%s, \"%s\": %d}", t, field, value);
+        // release memory
+        free(t);
+    }
+    // split json data
+    split(__json_str);
+
+    return *this;
+}
+
+Json& Json::set(const char* field, char* values[], int size) {
+    // allocate memory for local pointer
+    char* str = (char*)malloc(JSON_MAX_SIZE);
+
+    memset(str, 0, JSON_MAX_SIZE);
 
     for(int i = 0; i < size; i++) {
         strcat(str, "\"");
-        strcat(str, value[i]);
+        strcat(str, values[i]);
         strcat(str, "\"");
         if(i != (size - 1)) strcat(str, ", ");
     }
 
-    if(parent[0] == '\0') {
-        sprintf(parent, "\"%s\": [ %s ]", field, str);
+    if(__json_str[0] == '\0') {
+        sprintf(__json_str, "{\"%s\": [ %s ]}", field, str);
     }
     else {
-        sprintf(parent, "%s, \"%s\": [ %s ]", temp, field, str);
+        char* t = (char*)malloc(strlen(__json_str) + 1);
+        memcpy(t, &__json_str[1], strlen(__json_str) - 2);
+
+        sprintf(__json_str, "{%s, \"%s\": [ %s ]}", t, field, str);
+        // release memory for local variable
+        free(t);
     }
-
-    temp    = NULL;
-    str     = NULL;
-
-    free(temp);
+    // release memory for local variable
     free(str);
+    str = NULL;
+    // split json data
+    split(__json_str);
+    
+    return *this;
 }
 
-void Json::add(char* parent, const char* field, int values[], int size) {
-    char* temp  = parent;
-    char* str   = (char*)malloc(1024);
-    char* digit = (char*)malloc(10);
+Json& Json::set(const char* field, int values[], int size) {
+    char* str = (char*)malloc(JSON_MAX_SIZE);
+    char* digit = (char*)malloc(JSON_MAX_SIZE_NUM);
 
-    if(!str)    return;
-    if(!digit)  return;
-
-    memset(str, 0, 1024);
-    memset(digit, 0, 10);
+    memset(str, 0, JSON_MAX_SIZE);
+    memset(digit, 0, JSON_MAX_SIZE_NUM);
 
     for(int i = 0; i < size; i++) {
         sprintf(digit, "%d", values[i]);
         strcat(str, digit);
-
-        if(i != size -1) strcat(str, ", "); 
+        if(i != size - 1) strcat(str, ", ");
     }
 
-    if(parent[0] == '\0') {
-        sprintf(parent, "\"%s\":[ %s ]", field, str);
+    if(__json_str[0] == '\0') {
+        sprintf(__json_str, "\"%s\": [ %s ]", field, str);
     }
     else {
-        sprintf(parent, "%s, \"%s\":[%s]", temp, field, str);
+        char* t = (char*)malloc(strlen(__json_str) + 1);
+        memcpy(t, &__json_str[1], strlen(__json_str) - 2);
+
+        sprintf(__json_str, "{%s, \"%s\": [ %s ]}", t, field, str);
+        // release memory for local variable
+        free(t);
+    }
+    // release memory for local variable
+    free(str);
+    str = NULL;
+    // split data json
+    split(__json_str);
+
+    return *this;
+}
+
+Json& Json::set(const char* field, Json values[], int size) {
+    char* str = (char*)malloc(JSON_MAX_SIZE);
+    
+    memset(str, 0, JSON_MAX_SIZE);
+
+    for(int i = 0; i < size; i++) {
+        strcat(str, values[i].c_str());
+        if(i != (size - 1)) strcat(str, ", ");
     }
 
-    temp    = NULL;
-    str     = NULL;
-    digit   = NULL;
+    if(__json_str[0] == '\0') {
+        sprintf(__json_str, "{\"%s\": [ %s ]}", field, str);
+    }
+    else {
+        char* t = (char*)malloc(strlen(__json_str) + 1);
+        memcpy(t, &__json_str[1], strlen(__json_str) - 2);
 
-    free(temp);
+        sprintf(__json_str, "{%s, \"%s\": [ %s ]}", t, field, str);
+        // release memory for local pointer
+        free(t);
+    }
+
+    //release memory for local pointer
     free(str);
-    free(digit);
+    str = NULL;
+    // split data json
+    split(__json_str);
+
+    return *this;
 }
 
-void Json::add(char* parent, const char* field, char* multi) {
-    char* temp = parent;
+Json& Json::set(const char* field, Json& child) {
+    if(__json_str[0] == '\0') {
+        sprintf(__json_str, "{\"%s\": %s}", field, (char*)child.c_str());
+    }
+    else {
+        char* t = (char*)malloc(strlen(__json_str) + 1);
+        memcpy(t, &__json_str[1], strlen(__json_str) - 2);
 
-    sprintf(parent, "%s,\"%s\":{%s}", temp, field, multi);
+        sprintf(__json_str, "{%s, \"%s\": %s}", t, field, (char*)child.c_str());
+        // release memory for local variable
+        free(t);
+    }
+    // split data json
+    split(__json_str);
 
-    // giải phóng con trỏ
-    temp = NULL;
-    free(temp);
-}
-
-void Json::add(char* parent, char* child) {
-    char* temp = parent;
-
-    sprintf(parent, "%s%s", temp, child);
-
-    temp = NULL;
-    free(temp);
-}
-
-void Json::add(char* parent) {
-    char* temp = parent;
-
-    char* buff = (char*)malloc(MAX_SIZE * sizeof(char));
-    sprintf(buff, "{%s}", temp);
-    strcpy(parent, buff);
-    // giải phóng vùng nhớ và con trỏ
-    free(buff);
-    temp = NULL;
-    free(temp);
+    return *this;
 }
 
 void Json::split(const char* payload) {
@@ -142,7 +196,7 @@ void Json::split(const char* payload) {
     char* t_data    = (char*)malloc(JSON_MAX_SIZE_DATA);
     if(!key || !str || !num || !t_key || !t_data) {
         printf("memory allocation has failed.\n");
-        error = true;
+        __error = true;
         return;
     }
 
@@ -151,6 +205,8 @@ void Json::split(const char* payload) {
     int end         = 0;
 
     clear_map();
+    // copy data json string
+    strcpy(__json_str, payload);
 
     for(size_t i = 0; i < length; i++) {
         char chr = payload[i];
@@ -268,7 +324,7 @@ void Json::split(const char* payload) {
         }
     }
     
-    error   = false;
+    __error   = false;
 
     key     = NULL;
     free(key);
@@ -283,49 +339,55 @@ void Json::create_map(char* data, uint8_t type, uint8_t level) {
     JsonMap t_map;
     t_map.type      = type;
     t_map.level     = level;
-    t_map.pos       = pointer;
+    t_map.pos       = __pointer;
     t_map.length    = strlen(data);
 
-    map[cnt++]      = t_map;
-    // copy data to storage
-    memcpy(&storage[pointer], data, strlen(data));
-    // update pointer
-    pointer         += strlen(data) + 1;
+    __map[__cnt++]      = t_map;
+    // copy data to __storage
+    memcpy(&__storage[__pointer], data, strlen(data));
+    // update __pointer
+    __pointer         += strlen(data) + 1;
 }
 
 void Json::clear_map(void) {
-    // clear all memory in storage and map
-    memset(storage, 0, sizeof(uint8_t) * 1024);
-    memset(map, 0, sizeof(JsonMap) * 10);
+    // clear all memory in __storage and __map
+    memset(__storage, 0, sizeof(uint8_t) * 1024);
+    memset(__map, 0, sizeof(JsonMap) * 10);
 
-    cnt             = 0;
-    pointer         = 0;
+    __cnt             = 0;
+    __pointer         = 0;
 }
 
 void Json::delete_map(void) {
-    free(storage);
-    free(map);
+    if(__storage)   {
+        free(__storage);
+        __storage = NULL;
+    }
+    if(__map){ 
+        free(__map);
+        __map = NULL;
+    }
 }
 
 void Json::get(const char* field, char*& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
-    // nếu error bằng true
-    if(error)   {
+    // nếu __error bằng true
+    if(__error)   {
         return;
     }
-    for(int i = 0; i < cnt; i+= 2) {
-        JsonMap idx = map[i];
+    for(int i = 0; i < __cnt; i+= 2) {
+        JsonMap idx = __map[i];
         memset(key, 0, idx.length + 1);
-        memcpy(key, &storage[idx.pos], idx.length);
+        memcpy(key, &__storage[idx.pos], idx.length);
         // so sánh kết quả
         if(!strcmp(key, field)) {
             // nếu đúng thì lấy dữ liệu vào move vào result
-            idx = map[i+1]; // data của key
+            idx = __map[i+1]; // data của key
             // allocate memory for result
             result = (char*)malloc(idx.length + 1);
             // clear memory zone and copy data
             memset(result, 0, idx.length + 1);
-            memcpy(result, &storage[idx.pos], idx.length);
+            memcpy(result, &__storage[idx.pos], idx.length);
 
             free(key);
             return;
@@ -338,20 +400,20 @@ void Json::get(const char* field, char*& result) {
 void Json::get(const char* field, int& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     // nếu bị lỗi thì sẽ ko tiếp tục
-    if(error)       return;
-    for(int i = 0; i < cnt; i+=2) {
-        JsonMap idx = map[i];
+    if(__error)       return;
+    for(int i = 0; i < __cnt; i+=2) {
+        JsonMap idx = __map[i];
         memset(key, 0, idx.length + 1);
-        memcpy(key, &storage[idx.pos], idx.length);
+        memcpy(key, &__storage[idx.pos], idx.length);
         // so sánh kết quả
         if(!strcmp(key, field)) {
             // nếu đúng lấy dữ liệu và move vào result
-            idx = map[i+1];
+            idx = __map[i+1];
             // allocate memory for result
             char* temp = (char*)malloc(idx.length + 1);
             // clear memory and copy data
             memset(temp, 0, idx.length + 1);
-            memcpy(temp, &storage[idx.pos], idx.length);
+            memcpy(temp, &__storage[idx.pos], idx.length);
             // casting temp to int
             result = atoi(temp);
 
@@ -367,23 +429,23 @@ void Json::get(const char* field, int& result) {
 
 void Json::get(const char* field, int*& result, uint16_t& length) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
-    if(error)       return;
+    if(__error)       return;
 
-    for(int i = 0; i < cnt; i++) {
-        JsonMap idx = map[i];
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
         if(idx.type == KEY) {
             memset(key, 0, idx.length + 1);
-            memcpy(key, &storage[idx.pos], idx.length);
+            memcpy(key, &__storage[idx.pos], idx.length);
             // so sanh ket qua
             if(!strcmp(key, field)) {
                 // copy data of key
-                idx = map[i+1];
+                idx = __map[i+1];
                 // kiem tra neu la type = DATA_ARRAY
                 if(idx.type == DATA_ARRAY) {
                     char* buf = (char*)malloc(idx.length + 1);
-                    // get data in map
+                    // get data in __map
                     memset(buf, 0, idx.length + 1);
-                    memcpy(buf, &storage[idx.pos], idx.length);
+                    memcpy(buf, &__storage[idx.pos], idx.length);
                     // split data array
                     splitarray(buf, result, length);
                     // release memory and exit function
@@ -392,31 +454,31 @@ void Json::get(const char* field, int*& result, uint16_t& length) {
                     return;
 
                 }
-                else return;
             }
         }
     }
+    free(key);
 }
 
 void Json::get(const char* field, char**& result, uint16_t& length) {
     char*   key   = (char*)malloc(JSON_MAX_SIZE_KEY);
-    if(error)       return;
+    if(__error)       return;
 
-    for(int i = 0; i < cnt; i++) {
-        JsonMap idx = map[i];
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
         if(idx.type == KEY) {
             memset(key, 0, idx.length + 1);
-            memcpy(key, &storage[idx.pos], idx.length);
+            memcpy(key, &__storage[idx.pos], idx.length);
             // so sanh ket qua
             if(!strcmp(key, field)) {
                 // copy data of key
-                idx = map[i+1];
+                idx = __map[i+1];
                 // kiem tra neu la type = DATA_ARRAY
                 if(idx.type == DATA_ARRAY) {
                     char* buf = (char*)malloc(idx.length + 1);
-                    // get data in map
+                    // get data in __map
                     memset(buf, 0, idx.length + 1);
-                    memcpy(buf, &storage[idx.pos], idx.length);
+                    memcpy(buf, &__storage[idx.pos], idx.length);
                     // split data array
                     splitarray(buf, result, length);
                     // release memory and exit function
@@ -425,25 +487,131 @@ void Json::get(const char* field, char**& result, uint16_t& length) {
                     return;
 
                 }
-                else return;
             }
         }
     }
+    free(key);
+}
+
+void Json::get(const char* field, Json& child) {
+    char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
+
+    if(__error)       return;
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+
+            if(!strcmp(key, field)) {
+                // kiem tra cac thanh phan ke tiep la level 2 thi get
+                int j               = i + 1;
+                idx                 = __map[j];
+
+                JsonMap idx_next    = __map[j+1];
+                // get first location
+                uint16_t pos    = idx.pos;
+                uint16_t length = 1;
+                JsonGetChild    fsm = JSM_GET_CHILD_INITIAL;
+
+                char*   t_key       = NULL;
+                char*   t_key_child = NULL;
+                char*   t_data      = NULL;
+                Json    t_child;
+
+                int     old_level   = idx.level;
+                bool    is_child    = false;
+                bool    has_child   = false;
+
+                while(idx.level > 1) {
+
+                    if(idx.type == KEY) {
+                        if(idx_next.type == KEY) {
+                            t_key_child = (char*)malloc(idx.length + 1);
+                            memset(t_key_child, 0, idx.length + 1);
+                            memcpy(t_key_child, &__storage[idx.pos], idx.length);
+                        }
+                        else {
+                            t_key = (char*)malloc(idx.length + 1);
+                            memset(t_key, 0, idx.length + 1);
+                            memcpy(t_key, &__storage[idx.pos], idx.length);
+                        }
+                    }
+                    else if(idx.type == DATA) {
+                        t_data = (char*)malloc(idx.length + 1);
+                        memset(t_data, 0, idx.length + 1);
+                        memcpy(t_data, &__storage[idx.pos], idx.length);
+
+                        if(is_child) {
+                            t_child.set(t_key, t_data);
+                        }
+                        else {
+                            child.set(t_key, t_data);
+                        }
+                    }
+                    else if(idx.type == DATA_ARRAY) {
+                        char** t_result  = NULL;
+                        uint16_t t_length = 0;
+                        t_data = (char*)malloc(idx.length + 1);
+                        memset(t_data, 0, idx.length + 1);
+                        memcpy(t_data, &__storage[idx.pos], idx.length);
+
+                        splitarray(t_data, t_result, t_length);
+
+                        if(is_child) {
+                            t_child.set(t_key, t_result, t_length);
+                        }
+                        else {
+                            child.set(t_key, t_result, t_length);
+                        }
+                        // release pointer 
+                        for(int i = 0; i < t_length; i++)
+                            free(t_result[i]);
+                        free(t_result);
+                    }
+
+                    if(idx_next.level > idx.level) is_child = true;
+                    else if(idx.level > idx_next.level) {
+                        if(is_child) {
+                            child.set(t_key_child, t_child);
+                        }
+                        is_child = false;
+                    }
+                    else {/* do nothing */}
+
+                    // old_level   = idx.level;
+                    j++;
+                    idx     = __map[j];
+                    if(j < __cnt) idx_next = __map[j+1];
+                }
+
+                if(is_child) {
+                    child.set(t_key_child, t_child);
+                }
+
+                free(t_key);
+                free(t_data);
+                free(t_key_child);
+            }
+        }
+    }
+
+    free(key);
 }
 
 void Json::validation(void) {
     // nếu bị lỗi thì thoát hàm
-    if(error)       return;
+    if(__error)       return;
 
-    for(int i = 0; i < cnt; i++) {
-        JsonMap idx = map[i];
-        JsonMap idx_map = map[i+1];
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
+        JsonMap idx_map = __map[i+1];
 
         if(idx.type == KEY) {
             char* name = (char*)malloc(idx.length + 1);
             if(name) {
                 memset(name, 0, idx.length + 1);
-                memcpy(name, &storage[idx.pos], idx.length);
+                memcpy(name, &__storage[idx.pos], idx.length);
                 if(idx_map.type == KEY) {
                     printf("%s\n", name);
                 }
@@ -462,7 +630,7 @@ void Json::validation(void) {
             char* data = (char*)malloc(idx.length + 1);
             if(data) {
                 memset(data, 0, idx.length + 1);
-                memcpy(data, &storage[idx.pos], idx.length);
+                memcpy(data, &__storage[idx.pos], idx.length);
                 printf("\t\t-\t%s\n", data);
                 free(data);
             }
@@ -472,9 +640,9 @@ void Json::validation(void) {
 
 void Json::check_map(void) {
     // nếu bị lỗi thì thoát hàm
-    if(error)       return;
-    for(int i = 0; i < cnt; i++) {
-        JsonMap idx = map[i];
+    if(__error)       return;
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
         printf("type: %d\nlevel: %d\npos: %d\nlength: %d\n***\n", idx.type, idx.level, idx.pos, idx.length);
     } 
 
@@ -587,11 +755,12 @@ void Json::splitarray(char* str, char**& result, uint16_t& length) {
             memset(__str, 0, JSON_MAX_SIZE_DATA);
             idx = 0;
             // when character is ',' change state
-            if(chr == ',') fsm = JSM_ARRAY_START;
-            else if(chr == ']') fsm = JSM_ARRAY_END;
+            if(chr == ',') {
             // increst local count
-            count++;
-
+                count++;
+                fsm = JSM_ARRAY_START;
+            }
+            else if(chr == ']') fsm = JSM_ARRAY_END;
         }
         else if(fsm == JSM_ARRAY_END) { /* do nothing */ }
     }
@@ -610,5 +779,8 @@ void Json::splitarray(char* str, char**& result, uint16_t& length) {
     
     // release memory
     free(__str);
+
+    for(int i = 0; i < count; i++)
+        free(__buf[i]);
     free(__buf);
 }

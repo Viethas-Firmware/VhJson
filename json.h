@@ -8,9 +8,9 @@
 
 
 
-#define MAX_SIZE            4096
+#define JSON_MAX_SIZE       4096
 #define JSON_MAX_SIZE_KEY   50
-#define JSON_MAX_SIZE_DATA  256
+#define JSON_MAX_SIZE_DATA  1024
 #define JSON_MAX_SIZE_NUM   10
 
 #define JSON_TYPE_KEY       1
@@ -42,30 +42,44 @@ enum JsonArrayStateMachine {
     JSM_ARRAY_END,
 };
 
+enum JsonGetChild {
+    JSM_GET_CHILD_INITIAL,
+    JSM_GET_CHILD_KEY,
+    JSM_GET_CHILD_DATA,
+    JSM_GET_CHILD_CHILD_KEY,
+    JSM_GET_CHILD_END,
+};
+
 struct JsonMap {
     uint8_t     type  : 2;
     uint8_t     level : 2;
     uint16_t    pos   : 12;
     uint16_t    length;
+
+    void print(void) {
+        printf("======\n");
+        printf("type:\t%d\n", type);
+        printf("level:\t%d\n", level);
+        printf("pos:\t%d\n", pos);
+        printf("len:\t%d\n", length);
+    }
 };
 
 class Json {
 public:
-    static char *jsonParent;
-    static char *jsonParam;
-
     Json();
     ~Json();
 
-    void add(char* parent, const char* field, const char* value);
-    void add(char* parent, const char* field, int value);
+    void setBufferSize(uint16_t size);
 
-    void add(char* parent, const char* field, const char* value[], int size);
-    void add(char* parent, const char* field, int values[], int size);
+    Json& set(const char* field, const char* value);
+    Json& set(const char* field, int value);
 
-    void add(char* parent, const char* field, char* multi);
-    void add(char* parent, char* child);
-    void add(char* parent);
+    Json& set(const char* field, char* values[], int size);
+    Json& set(const char* field, int values[], int size);
+    Json& set(const char* fiedl, Json values[], int size);
+
+    Json& set(const char* field, Json& child);
 
     void get(const char* field, char*& result);
     void get(const char* field, int& result);
@@ -73,19 +87,28 @@ public:
     void get(const char* field, int*& result, uint16_t& length);
     void get(const char* field, char**& result, uint16_t& length);
 
+    void get(const char* field, Json& child);
+
+    void split(const char* payload);
+
     void validation(void);
 
     void check_map(void);
 
-    void split(const char* payload);
+    const char* c_str(void);
     
 private:
-    uint8_t*    storage;
-    JsonMap*    map;
+    uint8_t*    __storage       = NULL;
+    JsonMap*    __map           = NULL;
+    char*       __json_str      = NULL;
 
-    bool        error       = false;
-    uint16_t    cnt;
-    uint16_t    pointer;
+    bool        __error         = false;
+
+    uint16_t    __cnt           = 0;
+    uint16_t    __pointer       = 0;
+    uint16_t    __buffer_size   = 0;
+
+    
 
     /**
      * @brief Sẽ tạo bản đổ ánh xạ cho dữ liệu
