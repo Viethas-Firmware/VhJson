@@ -10,7 +10,9 @@ Json::Json()    {
     __map             = (JsonMap*)malloc(sizeof(JsonMap) * 10);
     __error           = true;
 }
-Json::~Json()   {   
+Json::~Json()   {
+    if(__json_str)  free(__json_str);
+    __json_str = NULL;
     delete_map();
 }
 
@@ -27,6 +29,14 @@ void Json::setBufferSize(uint16_t size) {
 
 const char* Json::c_str(void) {
     return (const char*)this->__json_str;
+}
+
+void Json::clear(void) {
+    clear_map();
+    
+    memset(__json_str, 0, __buffer_size);
+
+    __error = true;
 }
 
 Json& Json::set(const char* field, const char* value) {
@@ -220,7 +230,7 @@ void Json::split(const char* payload) {
             if(chr == '\"' || chr == '\'') {
                 memset(key, 0, JSON_MAX_SIZE_KEY);
                 idx = 0;
-                // chuyển trạng thái
+                // change state
                 jsm = JSON_KEY;
             }
         }

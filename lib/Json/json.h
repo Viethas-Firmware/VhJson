@@ -1,3 +1,9 @@
+/*
+    json.h      This is a library to generate strings in JSON format.
+    Author      DucVM
+    Copyright   Viethas@2013
+*/
+
 #ifndef __JSON_H__
 #define __JSON_H__
 
@@ -5,7 +11,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 
 #define JSON_MAX_SIZE       4096
@@ -91,9 +96,7 @@ public:
 
     void split(const char* payload);
 
-    void validation(void);
-
-    void check_map(void);
+    void clear(void);
 
     const char* c_str(void);
     
@@ -108,18 +111,16 @@ private:
     uint16_t    __pointer       = 0;
     uint16_t    __buffer_size   = 0;
 
-    
-
     /**
-     * @brief Sẽ tạo bản đổ ánh xạ cho dữ liệu
+     * @brief This method has the function of creating a mapping map for the data.
      * 
-     * @param data          dữ liệu cần được tạo ánh xạ
-     * @param key           nếu đó là key thì bàng 1 ngược lại 0.
-     * @param level         cap bac cung tung thanh phan trong chuoi json
+     * @param data          the data need to mapping.
+     * @param key           when data is key then is 0 else 1
+     * @param level         is level in json format
      */
     void create_map(char* data, uint8_t type, uint8_t level);
     /**
-     * @brief xóa dữ liệu trong bản đồ ánh xạ và reset các biến
+     * @brief clear data in memory
      * 
      */
     void clear_map(void);
@@ -127,6 +128,10 @@ private:
 
     void splitarray(char* str, int*& result, uint16_t& length);
     void splitarray(char* str, char**& result, uint16_t& length);
+
+    void validation(void);
+
+    void check_map(void);
 };
 
 
