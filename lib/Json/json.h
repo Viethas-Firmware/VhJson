@@ -47,14 +47,6 @@ enum JsonArrayStateMachine {
     JSM_ARRAY_END,
 };
 
-enum JsonGetChild {
-    JSM_GET_CHILD_INITIAL,
-    JSM_GET_CHILD_KEY,
-    JSM_GET_CHILD_DATA,
-    JSM_GET_CHILD_CHILD_KEY,
-    JSM_GET_CHILD_END,
-};
-
 struct JsonMap {
     uint8_t     type  : 2;
     uint8_t     level : 2;
@@ -76,9 +68,11 @@ public:
     ~Json();
 
     void setBufferSize(uint16_t size);
+    uint16_t getBufferSize(void);
 
     Json& set(const char* field, const char* value);
     Json& set(const char* field, int value);
+    Json& set(const char* field, float value);
 
     Json& set(const char* field, char* values[], int size);
     Json& set(const char* field, int values[], int size);
@@ -88,9 +82,11 @@ public:
 
     void get(const char* field, char*& result);
     void get(const char* field, int& result);
+    void get(const char* field, float& result);
 
     void get(const char* field, int*& result, uint16_t& length);
     void get(const char* field, char**& result, uint16_t& length);
+    void get(const char* field, float*& result, uint16_t& length);
 
     void get(const char* field, Json& child);
 
@@ -128,6 +124,7 @@ private:
 
     void splitarray(char* str, int*& result, uint16_t& length);
     void splitarray(char* str, char**& result, uint16_t& length);
+    void splitarray(char* str, float*& result, uint16_t& length);
 
     void validation(void);
 

@@ -27,6 +27,10 @@ void Json::setBufferSize(uint16_t size) {
     }
 }
 
+uint16_t Json::getBufferSize(void) {
+    return __buffer_size;
+}
+
 const char* Json::c_str(void) {
     return (const char*)this->__json_str;
 }
@@ -75,6 +79,25 @@ Json& Json::set(const char* field, int value) {
         free(t);
     }
     // split json data
+    split(__json_str);
+
+    return *this;
+}
+
+Json& Json::set(const char* field, float value) {
+    if(this->__json_str[0] == '\0') {
+        sprintf(this->__json_str, "{\"%s\": \"%f\"}", field, value);
+    }
+    else {
+        // allocate memory for local variable
+        char* t = (char*)malloc(strlen(this->__json_str) + 1);
+        memcpy(t, &this->__json_str[1], strlen(this->__json_str) - 2);
+
+        sprintf(this->__json_str, "{%s, \"%s\": \"%f\"}", t, field, value);
+        // release memory
+        free(t);
+    }
+
     split(__json_str);
 
     return *this;
@@ -382,25 +405,28 @@ void Json::delete_map(void) {
 void Json::get(const char* field, char*& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     // nếu __error bằng true
-    if(__error)   {
-        return;
-    }
+    if(__error)     return;
     for(int i = 0; i < __cnt; i+= 2) {
         JsonMap idx = __map[i];
-        memset(key, 0, idx.length + 1);
-        memcpy(key, &__storage[idx.pos], idx.length);
-        // so sánh kết quả
-        if(!strcmp(key, field)) {
-            // nếu đúng thì lấy dữ liệu vào move vào result
-            idx = __map[i+1]; // data của key
-            // allocate memory for result
-            result = (char*)malloc(idx.length + 1);
-            // clear memory zone and copy data
-            memset(result, 0, idx.length + 1);
-            memcpy(result, &__storage[idx.pos], idx.length);
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+            // so sánh kết quả
+            if(!strcmp(key, field)) {
+                // nếu đúng thì lấy dữ liệu vào move vào result
+                idx = __map[i+1]; // data của key
 
-            free(key);
-            return;
+                if(idx.type == DATA) {
+                    // allocate memory for result
+                    result = (char*)malloc(idx.length + 1);
+                    // clear memory zone and copy data
+                    memset(result, 0, idx.length + 1);
+                    memcpy(result, &__storage[idx.pos], idx.length);
+
+                    free(key);
+                    return;
+                }
+            }
         }
     }
     result = NULL;
@@ -411,29 +437,67 @@ void Json::get(const char* field, int& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     // nếu bị lỗi thì sẽ ko tiếp tục
     if(__error)       return;
-    for(int i = 0; i < __cnt; i+=2) {
+    for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
-        memset(key, 0, idx.length + 1);
-        memcpy(key, &__storage[idx.pos], idx.length);
-        // so sánh kết quả
-        if(!strcmp(key, field)) {
-            // nếu đúng lấy dữ liệu và move vào result
-            idx = __map[i+1];
-            // allocate memory for result
-            char* temp = (char*)malloc(idx.length + 1);
-            // clear memory and copy data
-            memset(temp, 0, idx.length + 1);
-            memcpy(temp, &__storage[idx.pos], idx.length);
-            // casting temp to int
-            result = atoi(temp);
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+            // so sánh kết quả
+            if(!strcmp(key, field)) {
+                // nếu đúng lấy dữ liệu và move vào result
+                idx = __map[i+1];
 
-            free(temp);
-            free(key);
+                if(idx.type == DATA) {
+                    // allocate memory for result
+                    char* temp = (char*)malloc(idx.length + 1);
+                    // clear memory and copy data
+                    memset(temp, 0, idx.length + 1);
+                    memcpy(temp, &__storage[idx.pos], idx.length);
+                    // casting temp to int
+                    result = atoi(temp);
+                    // release memory
+                    free(temp);
+                    free(key);
 
-            return;
+                    return;
+                }
+            }
         }
     }
     result = -1;
+    free(key);
+}
+
+void Json::get(const char* field, float& result) {
+    char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
+
+    if(__error)       return;
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+            // compare result
+            if(!strcmp(key, field)) {
+                idx = __map[i+1];
+                // check type is DATA
+                if(idx.type == DATA) {
+                    char* buf = (char*)malloc(idx.length + 1);
+                    // copy dat for result
+                    memset(buf, 0, idx.length + 1);
+                    memcpy(buf, &__storage[idx.pos], idx.length);
+                    // cast const char* to float
+                    result = atof(buf);
+                    // release memory
+                    free(buf);
+                    free(key);
+
+                    return;
+                }
+            }
+        }
+    }
+    result = -1.0;
     free(key);
 }
 
@@ -503,6 +567,37 @@ void Json::get(const char* field, char**& result, uint16_t& length) {
     free(key);
 }
 
+void Json::get(const char* field, float*& result, uint16_t& length) {
+    char* key   = (char*)malloc(JSON_MAX_SIZE_KEY);
+    
+    if(__error) return;
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+
+            if(!strcmp(key, field)) {
+                // copy data of key
+                idx = __map[i+1];
+                // check type is DATA_ARRAY
+                if(idx.type == DATA_ARRAY) {
+                    char* buf = (char*)malloc(idx.length + 1);
+                    // get data in map
+                    memset(buf, 0, idx.length + 1);
+                    memcpy(buf, &__storage[idx.pos], idx.length);
+                    // split data array
+                    splitarray(buf, result, length);
+                    // release memory and exit function
+                    free(buf);
+                    free(key);
+                    return;
+                }
+            }
+        }
+    }
+}
+
 void Json::get(const char* field, Json& child) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
 
@@ -522,7 +617,6 @@ void Json::get(const char* field, Json& child) {
                 // get first location
                 uint16_t pos    = idx.pos;
                 uint16_t length = 1;
-                JsonGetChild    fsm = JSM_GET_CHILD_INITIAL;
 
                 char*   t_key       = NULL;
                 char*   t_key_child = NULL;
@@ -717,6 +811,67 @@ void Json::splitarray(char* str, int*& result, uint16_t& length) {
     free(digit);
     free(temp);
 }
+
+void Json::splitarray(char* str, float*& result, uint16_t& length) {
+    JsonArrayStateMachine fsm = JSM_ARRAY_INITIAL;
+    int idx     = 0;
+    int count   = 0;
+    // allocate memory for local variable
+    char* digit = (char*)malloc(JSON_MAX_SIZE_NUM);
+    float* temp = (float*)malloc(JSON_MAX_SIZE_DATA * sizeof(float));
+    // when allocated failed then exit function
+    if(!temp)   return;
+
+    for(int i = 0; i < strlen(str); i++) {
+        char chr = str[i];
+
+        if(fsm == JSM_ARRAY_INITIAL) {
+            if(chr == '[') {
+                // reset local variable
+                idx = 0;
+                memset(digit, 0, JSON_MAX_SIZE_NUM);
+                // change state
+                fsm = JSM_ARRAY_START;
+            }
+        }
+        else if(fsm == JSM_ARRAY_START) {
+            if(chr == ',') {
+                float t         = atof(digit);
+                temp[count++]   = t;
+                // clear data in digit memory
+                memset(digit, 0, JSON_MAX_SIZE_NUM);
+                idx = 0;
+            }
+            else if(chr == ']') {
+                float t         = atof(digit);
+                temp[count++]   = t;
+                // clear data in buffer
+                memset(digit, 0, JSON_MAX_SIZE_NUM);
+                idx = 0;
+                // change state
+                fsm = JSM_ARRAY_END;
+            }
+            else {
+                digit[idx++]    = chr;
+            }
+        }
+        else if(fsm == JSM_ARRAY_END)   { /*do nothing*/ }
+    }
+
+    // when result allocated memory then release memory
+    if(result)  free(result);
+    // allocate memory
+    result      = (float*)malloc(count * sizeof(float));
+    if(!result) return;
+
+    memcpy(result, temp, count * sizeof(float));
+    length = count;
+
+    // release memory
+    free(digit);
+    free(temp);
+}
+
 
 void Json::splitarray(char* str, char**& result, uint16_t& length) {
     JsonArrayStateMachine fsm   = JSM_ARRAY_INITIAL;
