@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "json.h"
+#include <json.h>
 
 String manual = "";
 
@@ -17,15 +17,15 @@ void loop() {
     }
     else {
       Json json;
-      char* result = NULL;
-      json.split(manual.c_str());
+      json.set("temp", 30.5f);
+      json.set("hum", 71.5f);
+
       Serial.println(json.c_str());
 
-      json.get("msg", result);
+      float value = 0;
+      json.get("temp", value);
 
-      if(result) Serial.println(result);
-
-      free(result);
+      Serial.println(value);
 
       json.clear();
 

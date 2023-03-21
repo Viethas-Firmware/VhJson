@@ -1,0 +1,29 @@
+{
+    "name": "VhJson",
+    "version": "1.0",
+    "description": "VhJson is the easiest JSON manipulation library to parse or deserialize complex or nested JSON object and arrays.",
+    "keywords": "json, esp32, esp8266, firebase, firebaseJson, ArduinoJson",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/Viethas-Firmware/VhJson.git"
+    },
+    "authors":
+    [
+      {
+        "name": "DucVM",
+        "email": "ducvuminhspk@gmail.com",
+        "url": ""
+      },
+      {
+        "name": "Viethas",
+        "email": "viethas.info@gmail.com",
+        "url": "https://viethas.com/",
+        "maintainer": true
+      }
+    ],
+    "license": "GPL-3.0",
+    "homepage": "https://viethas.com/",
+    "frameworks": "*",
+    "platforms": "*"
+  }
