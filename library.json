@@ -25,5 +25,17 @@
     "license": "GPL-3.0",
     "homepage": "https://viethas.com/",
     "frameworks": "*",
-    "platforms": "*"
+    "platforms": "*",
+    "examples": [
+      {
+        "name": "JsonParse",
+        "base": "examples",
+        "files": ["JsonParse.ino"]
+      },
+      {
+        "name": "JsonGenerator",
+        "base": "examples",
+        "files": ["JsonGenerator.ino"]
+      }
+    ]
   }
