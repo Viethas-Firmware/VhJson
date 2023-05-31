@@ -1,35 +1,35 @@
-#include <Arduino.h>
+#include <stdio.h>
+#include <conio.h>
 #include <json.h>
 
-String manual = "";
 
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-}
+int main() {
+    Json json;
+    Json doc;
 
-void loop() {
-  // put your main code here, to run repeatedly:
-  if(Serial.available() > 0) {
-    char chr = (char)Serial.read();
-    if(chr != '\n') {
-      manual += chr;
-    }
-    else {
-      Json json;
-      json.set("temp", 30.5f);
-      json.set("hum", 71.5f);
+    json.set("sensor", "gps");
+    json.set("time", 1351824120);
+    
+    float coordinates[2]  = {48.756080, 2.302038};
+    
+    json.set("data", coordinates, 2);
+    printf("%s\n", json.c_str());
+    // char str_json[] = "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
 
-      Serial.println(json.c_str());
+    doc.split(json.c_str());
 
-      float value = 0;
-      json.get("temp", value);
+    char* name;
+    int time;
+    float *coord;
+    int length;
+    doc.get("sensor", name);
+    doc.get("time", time);
+    doc.get("data", coord, length);
 
-      Serial.println(value);
+    printf("Sensor: %s\n", name);
+    printf("Time: %d\n", time);
+    printf("Latitude: %f\n", coord[0]);
+    printf("Longitude : %f\n", coord[1]);
 
-      json.clear();
-
-      manual = "";
-    }
-  }
+    return 0;
 }

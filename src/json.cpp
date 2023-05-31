@@ -169,6 +169,39 @@ Json& Json::set(const char* field, int values[], int size) {
     return *this;
 }
 
+Json& Json::set(const char* field, float values[], int size) {
+    char* str = (char*)malloc(JSON_MAX_SIZE);
+    char* digit = (char*)malloc(JSON_MAX_SIZE_NUM);
+
+    memset(str, 0, JSON_MAX_SIZE);
+    memset(digit, 0, JSON_MAX_SIZE_NUM);
+
+    for(int i = 0; i < size; i++) {
+        sprintf(digit, "%f", values[i]);
+        strcat(str, digit);
+        if(i != size - 1) strcat(str, ", ");
+    }
+
+    if(__json_str[0] == '\0') {
+        sprintf(__json_str, "\"%s\": [ %s ]", field, str);
+    }
+    else {
+        char* t = (char*)malloc(strlen(__json_str) + 1);
+        memcpy(t, &__json_str[1], strlen(__json_str) - 2);
+
+        sprintf(__json_str, "{%s, \"%s\": [ %s ]}", t, field, str);
+        // release memory for local variable
+        free(t);
+    }
+    // release memory for local variable
+    free(str);
+    str = NULL;
+    // split data json
+    split(__json_str);
+
+    return *this;
+}
+
 Json& Json::set(const char* field, Json values[], int size) {
     char* str = (char*)malloc(JSON_MAX_SIZE);
     
@@ -235,7 +268,6 @@ void Json::split(const char* payload) {
 
     int idx         = 0;
     int start       = 0;
-    int end         = 0;
 
     clear_map();
     // copy data json string
@@ -501,7 +533,7 @@ void Json::get(const char* field, float& result) {
     free(key);
 }
 
-void Json::get(const char* field, int*& result, uint16_t& length) {
+void Json::get(const char* field, int*& result, int& length) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     if(__error)       return;
 
@@ -534,7 +566,7 @@ void Json::get(const char* field, int*& result, uint16_t& length) {
     free(key);
 }
 
-void Json::get(const char* field, char**& result, uint16_t& length) {
+void Json::get(const char* field, char**& result, int& length) {
     char*   key   = (char*)malloc(JSON_MAX_SIZE_KEY);
     if(__error)       return;
 
@@ -567,7 +599,7 @@ void Json::get(const char* field, char**& result, uint16_t& length) {
     free(key);
 }
 
-void Json::get(const char* field, float*& result, uint16_t& length) {
+void Json::get(const char* field, float*& result, int& length) {
     char* key   = (char*)malloc(JSON_MAX_SIZE_KEY);
     
     if(__error) return;
@@ -615,17 +647,12 @@ void Json::get(const char* field, Json& child) {
 
                 JsonMap idx_next    = __map[j+1];
                 // get first location
-                uint16_t pos    = idx.pos;
-                uint16_t length = 1;
-
                 char*   t_key       = NULL;
                 char*   t_key_child = NULL;
                 char*   t_data      = NULL;
                 Json    t_child;
 
-                int     old_level   = idx.level;
                 bool    is_child    = false;
-                bool    has_child   = false;
 
                 while(idx.level > 1) {
 
@@ -655,7 +682,7 @@ void Json::get(const char* field, Json& child) {
                     }
                     else if(idx.type == DATA_ARRAY) {
                         char** t_result  = NULL;
-                        uint16_t t_length = 0;
+                        int t_length = 0;
                         t_data = (char*)malloc(idx.length + 1);
                         memset(t_data, 0, idx.length + 1);
                         memcpy(t_data, &__storage[idx.pos], idx.length);
@@ -752,7 +779,7 @@ void Json::check_map(void) {
 
 }
 
-void Json::splitarray(char* str, int*& result, uint16_t& length) {
+void Json::splitarray(char* str, int*& result, int& length) {
     JsonArrayStateMachine fsm = JSM_ARRAY_INITIAL;
     int idx     = 0;
     int count   = 0;
@@ -812,7 +839,7 @@ void Json::splitarray(char* str, int*& result, uint16_t& length) {
     free(temp);
 }
 
-void Json::splitarray(char* str, float*& result, uint16_t& length) {
+void Json::splitarray(char* str, float*& result, int& length) {
     JsonArrayStateMachine fsm = JSM_ARRAY_INITIAL;
     int idx     = 0;
     int count   = 0;
@@ -873,7 +900,7 @@ void Json::splitarray(char* str, float*& result, uint16_t& length) {
 }
 
 
-void Json::splitarray(char* str, char**& result, uint16_t& length) {
+void Json::splitarray(char* str, char**& result, int& length) {
     JsonArrayStateMachine fsm   = JSM_ARRAY_INITIAL;
     // declare local variable
     int count       = 0;

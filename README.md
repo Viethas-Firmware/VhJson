@@ -17,10 +17,10 @@ This library support any Arduino based MCU, ESP8266, ESP32, STM32F103C (Arm Cort
 ## Usage
 ```C++
 #include <Arduino.h>
-#include <VhJson.h>
+#include <json.h>
 
   
-VhJson json;
+Json json;
 
 // add "temperature" with value 30.5 and add "Humidity" with value "60.8"
 json.set("temperature", "30.5");
@@ -44,7 +44,7 @@ Serial.println(json.c_str());
 **/
 
 // add JSON child.
-VhJson child;
+Json child;
 child.set("name", "John");
 child.set("age", 20);
 json.set("member", child);

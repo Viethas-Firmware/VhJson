@@ -16,7 +16,7 @@
 #define JSON_MAX_SIZE       4096
 #define JSON_MAX_SIZE_KEY   50
 #define JSON_MAX_SIZE_DATA  1024
-#define JSON_MAX_SIZE_NUM   10
+#define JSON_MAX_SIZE_NUM   20
 
 #define JSON_TYPE_KEY       1
 #define JSON_TYPE_DATA      0
@@ -66,29 +66,65 @@ class Json {
 public:
     Json();
     ~Json();
-
+    /**
+     * @brief Set the Buffer Size object
+     * 
+     * @param size 
+     */
     void setBufferSize(uint16_t size);
+    /**
+     * @brief Get the Buffer Size object
+     * 
+     * @return uint16_t buffer size
+     */
     uint16_t getBufferSize(void);
-
-    Json& set(const char* field, const char* value);
-    Json& set(const char* field, int value);
-    Json& set(const char* field, float value);
-
-    Json& set(const char* field, char* values[], int size);
-    Json& set(const char* field, int values[], int size);
-    Json& set(const char* fiedl, Json values[], int size);
-
-    Json& set(const char* field, Json& child);
-
-    void get(const char* field, char*& result);
-    void get(const char* field, int& result);
-    void get(const char* field, float& result);
-
-    void get(const char* field, int*& result, uint16_t& length);
-    void get(const char* field, char**& result, uint16_t& length);
-    void get(const char* field, float*& result, uint16_t& length);
-
-    void get(const char* field, Json& child);
+    /**
+     * @brief The set() method is used to set value of an integer/string/float/Json. The "field"
+     *  parameter specifies the name of the field to set, and the value parameter specifies 
+     *  the value to set the field to. The method returns a reference to the Json object, 
+     *  so that the caller can chain multiple method calls together.
+     * 
+     * @param field         The name of the field to set.
+     * @param value         The value to set the field to.
+     */
+    Json& set(const char* field, const char*    value);
+    Json& set(const char* field, int            value);
+    Json& set(const char* field, float          value);
+    Json& set(const char* field, Json&          child);
+    /**
+     * @brief The set() method in the Json class is used to set the value of a field in a JSON object. 
+     * The method takes three argumens:
+     * 
+     * @param field         The name of the field to set
+     * @param values        An array of string/integer/float/Json that contain the values to set for the field.
+     * @param size          The numbers of elements in the values array.
+     */
+    Json& set(const char* field, char*  values[], int size);
+    Json& set(const char* field, int    values[], int size);
+    Json& set(const char* field, float  values[], int size);
+    Json& set(const char* field, Json   values[], int size);
+    
+    /**
+     * @brief The 'get()' method retrieves the value of a field.
+     * 
+     * @param field         The name of the field to get.
+     * @param result        The value of field type string/integer/float/Json
+     */
+    void get(const char* field, char*&  result);
+    void get(const char* field, int&    result);
+    void get(const char* field, float&  result);
+    void get(const char* field, Json&   child);
+    /**
+     * @brief The 'get()' method retrieves the array of a field.
+     * 
+     * @param field         The name of the field to get.
+     * @param result        The array value of field 
+     * @param length        The numbers of elements in the result array.
+     */
+    void get(const char* field, int*&   result, int& length);
+    void get(const char* field, char**& result, int& length);
+    void get(const char* field, float*& result, int& length);
+    
 
     void split(const char* payload);
 
@@ -122,9 +158,9 @@ private:
     void clear_map(void);
     void delete_map(void);
 
-    void splitarray(char* str, int*& result, uint16_t& length);
-    void splitarray(char* str, char**& result, uint16_t& length);
-    void splitarray(char* str, float*& result, uint16_t& length);
+    void splitarray(char* str, int*& result, int& length);
+    void splitarray(char* str, char**& result, int& length);
+    void splitarray(char* str, float*& result, int& length);
 
     void validation(void);
 
