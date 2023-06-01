@@ -251,7 +251,7 @@ Json& Json::set(const char* field, Json& child) {
     return *this;
 }
 
-void Json::split(const char* payload) {
+Json& Json::split(const char* payload) {
     size_t length = strlen(payload);
     JsonStateMachine jsm = JSON_INITIAL;
 
@@ -263,7 +263,7 @@ void Json::split(const char* payload) {
     if(!key || !str || !num || !t_key || !t_data) {
         printf("memory allocation has failed.\n");
         __error = true;
-        return;
+        return *this;
     }
 
     int idx         = 0;
@@ -398,6 +398,8 @@ void Json::split(const char* payload) {
     
     if(t_data)  free(t_data);
     if(t_key)   free(t_key);
+
+    return *this;
 }
 
 void Json::create_map(char* data, uint8_t type, uint8_t level) {
@@ -434,10 +436,10 @@ void Json::delete_map(void) {
     }
 }
 
-void Json::get(const char* field, char*& result) {
+Json& Json::get(const char* field, char*& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     // nếu __error bằng true
-    if(__error)     return;
+    if(__error)     return *this;
     for(int i = 0; i < __cnt; i+= 2) {
         JsonMap idx = __map[i];
         if(idx.type == KEY) {
@@ -456,19 +458,21 @@ void Json::get(const char* field, char*& result) {
                     memcpy(result, &__storage[idx.pos], idx.length);
 
                     free(key);
-                    return;
+                    return *this;
                 }
             }
         }
     }
     result = NULL;
     free(key);
+
+    return *this;
 }
 
-void Json::get(const char* field, int& result) {
+Json& Json::get(const char* field, int& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
     // nếu bị lỗi thì sẽ ko tiếp tục
-    if(__error)       return;
+    if(__error)       return *this;
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
         if(idx.type == KEY) {
@@ -491,19 +495,21 @@ void Json::get(const char* field, int& result) {
                     free(temp);
                     free(key);
 
-                    return;
+                    return *this;
                 }
             }
         }
     }
     result = -1;
     free(key);
+
+    return *this;
 }
 
-void Json::get(const char* field, float& result) {
+Json& Json::get(const char* field, float& result) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
 
-    if(__error)       return;
+    if(__error)       return *this;
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
         if(idx.type == KEY) {
@@ -524,18 +530,20 @@ void Json::get(const char* field, float& result) {
                     free(buf);
                     free(key);
 
-                    return;
+                    return *this;
                 }
             }
         }
     }
     result = -1.0;
     free(key);
+
+    return *this;
 }
 
-void Json::get(const char* field, int*& result, int& length) {
+Json& Json::get(const char* field, int*& result, int& length) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
-    if(__error)       return;
+    if(__error)       return *this;
 
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
@@ -557,18 +565,20 @@ void Json::get(const char* field, int*& result, int& length) {
                     // release memory and exit function
                     free(buf);
                     free(key);
-                    return;
+                    return *this;
 
                 }
             }
         }
     }
     free(key);
+
+    return *this;
 }
 
-void Json::get(const char* field, char**& result, int& length) {
+Json& Json::get(const char* field, char**& result, int& length) {
     char*   key   = (char*)malloc(JSON_MAX_SIZE_KEY);
-    if(__error)       return;
+    if(__error)       return *this;
 
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
@@ -590,19 +600,21 @@ void Json::get(const char* field, char**& result, int& length) {
                     // release memory and exit function
                     free(buf);
                     free(key);
-                    return;
+                    return *this;
 
                 }
             }
         }
     }
     free(key);
+
+    return *this;
 }
 
-void Json::get(const char* field, float*& result, int& length) {
+Json& Json::get(const char* field, float*& result, int& length) {
     char* key   = (char*)malloc(JSON_MAX_SIZE_KEY);
     
-    if(__error) return;
+    if(__error) return *this;
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
         if(idx.type == KEY) {
@@ -623,17 +635,52 @@ void Json::get(const char* field, float*& result, int& length) {
                     // release memory and exit function
                     free(buf);
                     free(key);
-                    return;
+                    return *this;
                 }
             }
         }
     }
+
+    return *this;
 }
 
-void Json::get(const char* field, Json& child) {
+Json& Json::get(const char* field, Json*& result, int& length) {
+    char* key   = (char*)malloc(JSON_MAX_SIZE_KEY);
+
+    if(__error) return *this;
+    for(int i = 0; i < __cnt; i++) {
+        JsonMap idx = __map[i];
+        if(idx.type == KEY) {
+            memset(key, 0, idx.length + 1);
+            memcpy(key, &__storage[idx.pos], idx.length);
+
+            if(!strcmp(key, field)) {
+                // copy data of key
+                idx = __map[i+1];
+                // check type is DATA_ARRAY
+                if(idx.type == DATA_ARRAY) {
+                    char* buf = (char*)malloc(idx.length + 1);
+                    // get data in map
+                    memset(buf, 0, idx.length + 1);
+                    memcpy(buf, &__storage[idx.pos], idx.length);
+                    // split data array
+                    splitarray(buf, result, length);
+                    // release memory and exit function
+                    free(buf);
+                    free(key);
+                    return *this;
+                }
+            }
+        }
+    }
+
+    return *this;
+}
+
+Json& Json::get(const char* field, Json& child) {
     char* key       = (char*)malloc(JSON_MAX_SIZE_KEY);
 
-    if(__error)       return;
+    if(__error)       return *this;
     for(int i = 0; i < __cnt; i++) {
         JsonMap idx = __map[i];
         if(idx.type == KEY) {
@@ -728,6 +775,8 @@ void Json::get(const char* field, Json& child) {
     }
 
     free(key);
+
+    return *this;
 }
 
 void Json::validation(void) {
@@ -975,4 +1024,85 @@ void Json::splitarray(char* str, char**& result, int& length) {
     for(int i = 0; i < count; i++)
         free(__buf[i]);
     free(__buf);
+}
+
+void Json::splitarray(char* str, Json*& result, int& length) {
+    JsonArrayStateMachine fsm   = JSM_ARRAY_INITIAL;
+
+    printf("%s\n", str);
+    // declare local variable
+    int count       = 0;
+    int idx         = 0;
+    int start       = 0;
+    // declare buffer char*
+    char* __str     = (char*)malloc(JSON_MAX_SIZE_DATA * sizeof(char));
+    Json  __buf[100];
+
+    for(int i = 0; i < strlen(str); i++) {
+        char chr = str[i];
+
+        if(fsm == JSM_ARRAY_INITIAL) {
+            if(chr == '[') {
+                idx     = 0;
+                count   = 0;
+                // clear data in buffer
+                memset(__str, 0, JSON_MAX_SIZE_DATA);
+                // change state
+                fsm     = JSM_ARRAY_START;
+            }
+        }
+        else if(fsm == JSM_ARRAY_START) {
+            if(chr == '{') {
+                start++;
+                // write data
+                __str[idx++]    = chr;
+                // change state
+                fsm             = JSM_ARRAY_ELE_STRING_START;
+            }
+        }
+        else if(fsm == JSM_ARRAY_ELE_STRING_START) {
+            if(chr == '{') {
+                start++;
+            }
+            else if(chr == '}') {
+                start--;
+                
+                if(start == 0) {
+                    // write data '}'
+                    __str[idx++]    = chr;
+                    // change state
+                    fsm             = JSM_ARRAY_ELE_STRING_END;
+                    continue;
+                }
+            }
+            else if(chr == ']') {
+                fsm                 = JSM_ARRAY_END;
+                continue;
+            }
+            // write data
+            __str[idx++]            = chr;
+        }
+        else if(fsm == JSM_ARRAY_ELE_STRING_END) {
+            //
+            __buf[count++].split(__str);
+            // clear memory buffer
+            memset(__str, 0, JSON_MAX_SIZE_DATA);
+            idx                 = 0;
+            // change state
+            fsm = JSM_ARRAY_START;
+        }
+        else if(fsm == JSM_ARRAY_END) {/* do nothing */}
+    }
+
+    // handle result data
+    result      = new Json[count];
+    if(result) {
+        for(int i = 0; i < count; i++) {
+            result[i].split(__buf[i].c_str());
+        }
+    
+        length      = count;
+    }
+    // release memory
+    free(__str);
 }

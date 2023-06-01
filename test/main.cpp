@@ -4,32 +4,42 @@
 
 
 int main() {
-    Json json;
     Json doc;
+    Json child[3];
+    Json json;
 
-    json.set("sensor", "gps");
-    json.set("time", 1351824120);
+    Json *result;
     
-    float coordinates[2]  = {48.756080, 2.302038};
-    
-    json.set("data", coordinates, 2);
-    printf("%s\n", json.c_str());
-    // char str_json[] = "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-
-    doc.split(json.c_str());
-
-    char* name;
-    int time;
-    float *coord;
     int length;
-    doc.get("sensor", name);
-    doc.get("time", time);
-    doc.get("data", coord, length);
 
-    printf("Sensor: %s\n", name);
-    printf("Time: %d\n", time);
-    printf("Latitude: %f\n", coord[0]);
-    printf("Longitude : %f\n", coord[1]);
+    child[0].set("name", "Vu Minh Duc");
+    child[0].set("id", "id_123456");
+    child[1].set("name", "Huynh Ngoc Trinh");
+    child[1].set("id", "id_145456");
+    child[2].set("name", "Huynh Lan Anh");
+    child[2].set("id", "id_135456");
+
+    doc.set("student", child, 3);
+
+    printf("%s\n", doc.c_str());
+
+    json.split(doc.c_str());
+
+    json.get("student", result, length);
+
+    for(int i = 0; i < length; i++) {
+        char *name;
+        char *id;
+
+        result[i].get("name",   name);
+        result[i].get("id",     id);
+
+        printf("name: %s\tid: %s\n", name, id);
+
+        free(name);
+        free(id);
+    }
+
 
     return 0;
 }

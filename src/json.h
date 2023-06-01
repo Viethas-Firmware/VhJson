@@ -110,10 +110,10 @@ public:
      * @param field         The name of the field to get.
      * @param result        The value of field type string/integer/float/Json
      */
-    void get(const char* field, char*&  result);
-    void get(const char* field, int&    result);
-    void get(const char* field, float&  result);
-    void get(const char* field, Json&   child);
+    Json& get(const char* field, char*&  result);
+    Json& get(const char* field, int&    result);
+    Json& get(const char* field, float&  result);
+    Json& get(const char* field, Json&   child);
     /**
      * @brief The 'get()' method retrieves the array of a field.
      * 
@@ -121,12 +121,13 @@ public:
      * @param result        The array value of field 
      * @param length        The numbers of elements in the result array.
      */
-    void get(const char* field, int*&   result, int& length);
-    void get(const char* field, char**& result, int& length);
-    void get(const char* field, float*& result, int& length);
+    Json& get(const char* field, int*&   result, int& length);
+    Json& get(const char* field, char**& result, int& length);
+    Json& get(const char* field, float*& result, int& length);
+    Json& get(const char* field, Json*&  result, int& length);
     
 
-    void split(const char* payload);
+    Json& split(const char* payload);
 
     void clear(void);
 
@@ -158,9 +159,10 @@ private:
     void clear_map(void);
     void delete_map(void);
 
-    void splitarray(char* str, int*& result, int& length);
-    void splitarray(char* str, char**& result, int& length);
-    void splitarray(char* str, float*& result, int& length);
+    void splitarray(char* str, int*&    result, int& length);
+    void splitarray(char* str, char**&  result, int& length);
+    void splitarray(char* str, float*&  result, int& length);
+    void splitarray(char* str, Json*&   result, int& length);
 
     void validation(void);
 
